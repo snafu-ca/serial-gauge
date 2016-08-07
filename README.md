@@ -22,13 +22,20 @@ pretty much on any signal; positive or negative going.
 The software is set up to receive data at 2400 baud and supports the 
 following commands down the serial port
 
+* !               zero the meter
 * 0-944<newline>  set the gauge to this value 
+* 0-944@          set the init point to this point
 * =               set very slow mode
 * -               set slow mode
 * +               set normal speed mode
 * *               select all meters
 * A-Z             select meter A, meter B... (see source code for details)
 <newline> can be either a carriage return or line feed
+
+The 'init point' mode @ is used if you turned the meter off at a specific point, and
+want to continue from that point.  Otherwise you should start with zeroing the meter
+with the ! command. Previous versions of the software auto zero'd, but this latest version
+doesn't.
 
 ## SERIAL INPUT
 

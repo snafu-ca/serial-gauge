@@ -1,3 +1,5 @@
+#include <SwitecX25.h>
+
 /*
 * Copyright (c) 2015, Scott Brynen - snafu.ca
 * All rights reserved.
@@ -45,9 +47,9 @@ char meterid = THISMETER;
   setup() - set the IO pins, and sweep the meter to reset
 ***/
 void setup(void) {
-	rcvSerial.begin(2400);
 	pinMode(RXPIN, INPUT_PULLUP); // SoftwareSerial sets it to plain input
-	meter.zero();
+  rcvSerial.begin(2400);
+	//meter.zero();
 }
 
 /***
@@ -77,6 +79,13 @@ void loop(void) {
 				meter.setPosition(inData);
 				inData = -1; // -1 means no data
 			} 
+      else if (c == '@')
+      {
+        meter.setZero(inData);
+        inData = -1;
+      }
+      else if (c == '!') 
+        meter.zero();
 			else if (c == '+') 
 				meter.setAccel(1.0);
 			else if (c == '-') 

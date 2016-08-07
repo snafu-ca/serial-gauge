@@ -1,7 +1,7 @@
 ## ASSEMBLY INSTRUCTIONS
 
 * D1-9	1N4148 diode
-* C1		22uF capacitor
+* C1		100µF capacitor
 * C2		<optional, see below>
 * C3		0.1uF (104) capacitor
 * R1		470R or 2k2 (see below)
@@ -11,7 +11,7 @@
 * M1		Switec/Juken X27.168 gauge stepper motor
 
 Be careful about the polarized components the diodes, semiconductors and the 
-22uF capacitor. For the diodes, the stripes are marked on the PCB. For the 
+100µF capacitor. For the diodes, the stripes are marked on the PCB. For the 
 capacitor, the negative side has a square pad which lines up with the white 
 stripe on the capacitor. For U1 and U3 the dot on the IC goes in the top
 left, again marked with a square pad.

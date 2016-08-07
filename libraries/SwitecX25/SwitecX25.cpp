@@ -1,7 +1,7 @@
 /*
  *  SwitecX25 Arduino Library
  *  Guy Carpenter, Clearwater Software - 2012
- *  Scott Brynen, snafu.ca - 2015
+ *  Scott Brynen, snafu.ca - 2015-2016
  *
  *  Licensed under the BSD2 license, see license.txt for details.
  *
@@ -13,47 +13,72 @@
 
 SwitecX25::SwitecX25(unsigned int steps, unsigned char pin1, unsigned char pin2, unsigned char pin3, unsigned char pin4)
 {
-  this->currentState = 0;
-  this->steps = steps;
-  this->pins[0] = pin1;
-  this->pins[1] = pin2;
-  this->pins[2] = pin3;
-  this->pins[3] = pin4;
-  for (int i=0; i<pinCount; i++)
-    pinMode(pins[i], OUTPUT);
-  stopped = true;
-  currentStep = 0;
-  targetStep = 0;
-  vel = 0;
-  memcpy(accelTable, defaultAccelTable, sizeof(accelTable)); // our own copy
+	this->steps = steps;
+	pins[0] = pin1;
+	pins[1] = pin2;
+	pins[2] = pin3;
+	pins[3] = pin4;
+	// figure out if we can use direct port manipulation; which is faster, 
+	// but all the IO pins have to be on the same output port
+	directPort = digitalPinToPort(pins[0]);
+	if (directPort != NOT_A_PIN && directPort == digitalPinToPort(pins[1]) && 
+		directPort == digitalPinToPort(pins[2]) && directPort == digitalPinToPort(pins[3])) 
+	{
+		directMask = digitalPinToBitMask(pins[0]) | digitalPinToBitMask(pins[1]) | digitalPinToBitMask(pins[2]) | digitalPinToBitMask(pins[3]);
+		for (int i=0; i < stateCount; i++) 
+		{
+			directStateMap[i] = 0;
+			byte mask = 1;
+			for (int j=0; j < pinCount; j++) 
+			{
+				if ((stateMap[i] & mask) != 0)
+					directStateMap[i] |= digitalPinToBitMask(pins[j]);
+				mask <<= 1;
+			}
+		}
+		*portModeRegister(directPort) |= directMask; // set output for our bits
+		directMask = ~directMask; // and we'll want 0s for the bits we care about later
+	}
+	else {
+		for (int i=0; i<pinCount; i++)
+			pinMode(pins[i], OUTPUT);
+		directPort = 0;
+	}
+	stopped = true;
+	currentStep = 0;
+	targetStep = 0;
+	vel = 0;
+	memcpy(accelTable, defaultAccelTable, sizeof(accelTable)); // our own copy
 }
 
 void SwitecX25::writeIO()
 {
-  byte mask = stateMap[currentState];
-  byte iostate[4];
-  iostate[0] = mask & 0x1; 
-  iostate[1] = (mask & 0x2) >> 1; 
-  iostate[2] = (mask & 0x4) >> 2; 
-  iostate[3] = (mask & 0x8) >> 3; 
-  noInterrupts();
-  digitalWrite(pins[0], iostate[0]);
-  digitalWrite(pins[1], iostate[1]);
-  digitalWrite(pins[2], iostate[2]);
-  digitalWrite(pins[3], iostate[3]);
-  interrupts();
-  
-  //for (int i=0; i<pinCount; i++) {
-  //  digitalWrite(pins[i], mask & 0x1);
-  //  mask >>= 1;
-  // }
+	if (directPort != 0)
+	{
+		volatile uint8_t *out;
+		out = portOutputRegister(directPort);
+		*out = (*out & directMask) | directStateMap[currentStep % stateCount];
+	} else {
+		byte mask = stateMap[currentStep % stateCount];
+		byte iostate[4];
+		iostate[0] = mask & 0x1; 
+		iostate[1] = (mask & 0x2) >> 1; 
+		iostate[2] = (mask & 0x4) >> 2; 
+		iostate[3] = (mask & 0x8) >> 3; 
+		noInterrupts();
+		digitalWrite(pins[0], iostate[0]);
+		digitalWrite(pins[1], iostate[1]);
+		digitalWrite(pins[2], iostate[2]);
+		digitalWrite(pins[3], iostate[3]);
+		interrupts();
+	}
+
 }
 
 void SwitecX25::stepUp()
 {
   if (currentStep < steps) {
     currentStep++;
-    currentState = (currentState + 1) % stateCount;
     writeIO();
   }
 }
@@ -62,7 +87,6 @@ void SwitecX25::stepDown()
 { 
   if (currentStep > 0) {
     currentStep--;
-    currentState = (currentState + 5) % stateCount;
     writeIO();
   }
 }
@@ -79,6 +103,16 @@ void SwitecX25::zero()
   vel = 0;
 }
 
+
+// set the current position (alternately to Zeroing above)
+void SwitecX25::setZero(unsigned int pos)
+{
+	currentStep = pos;
+	targetStep = pos;
+	vel = 0;
+}
+
+
 // This function determines the speed and accel
 // characteristics of the motor.  Ultimately it 
 // steps the motor once (up or down) and computes
@@ -93,7 +127,6 @@ void SwitecX25::zero()
 // delay in accelTable.  So from a standing start, vel is incremented
 // once each step until it reaches maxVel.  Under deceleration 
 // vel is decremented once each step until it reaches zero.
-
 void SwitecX25::advance()
 {
   time0 = micros();
