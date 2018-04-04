@@ -25,10 +25,10 @@ following commands down the serial port
 * !               zero the meter
 * 0-944<newline>  set the gauge to this value 
 * 0-944@          set the init point to this point
-* =               set very slow mode
-* -               set slow mode
-* +               set normal speed mode
-* *               select all meters
+* \=               set very slow mode
+* \-               set slow mode
+* \+               set normal speed mode
+* \\               select all meters
 * A-Z             select meter A, meter B... (see source code for details)
 <newline> can be either a carriage return or line feed
 
